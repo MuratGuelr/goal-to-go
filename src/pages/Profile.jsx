@@ -16,6 +16,7 @@ import { MdDarkMode } from "react-icons/md";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 import { FaFileUpload } from "react-icons/fa";
+import ListImages from "../components/ListImages";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ const Profile = () => {
 
   const [file, setFile] = useState(null);
   const [downloadURL, setDownloadURL] = useState("");
+  const [imageUrls, setImageUrls] = useState("");
 
   const userProfile = {
     firstName: fname,
@@ -136,17 +138,24 @@ const Profile = () => {
       const user = auth.currentUser;
       if (user) {
         const storage = getStorage();
+        const db = getFirestore();
+        const docRef = doc(db, "Users", user.uid);
+        const docSnapshot = await docRef.get();
+        if (docSnapshot.exists()) {
+          const userData = docSnapshot.data();
+          if (userData.profilePicture) {
+            const oldImageRef = ref(storage, userData.profilePicture);
+            await deleteObject(oldImageRef).catch((error) => {
+              toast.error(error);
+            });
+          }
+        }
         const storageRef = ref(storage, `${user.uid}/${file.name}`);
         await uploadBytes(storageRef, file);
         const url = await getDownloadURL(storageRef);
         setDownloadURL(url);
 
-        const db = getFirestore();
-        await setDoc(
-          doc(db, "Users", user.uid),
-          { profilePicture: url },
-          { merge: true }
-        );
+        await setDoc(docRef, { profilePicture: url }, { merge: true });
       } else {
         toast.error("Please login first!");
       }
@@ -242,6 +251,9 @@ const Profile = () => {
                           url={userDetails.profilePicture}
                         />
                       )}
+                      <div className="flex p-5 gap-2">
+                        <ListImages />
+                      </div>
                     </div>
                     <div className="mt-4 inline-flex gap-2">
                       <input
