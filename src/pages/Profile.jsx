@@ -8,6 +8,7 @@ import {
   onSnapshot,
   updateDoc,
   setDoc,
+  getDoc,
 } from "firebase/firestore";
 import { toast } from "react-toastify";
 import Loading from "../components/Loading";
@@ -140,25 +141,18 @@ const Profile = () => {
         const storage = getStorage();
         const db = getFirestore();
         const docRef = doc(db, "Users", user.uid);
-        const docSnapshot = await docRef.get();
-        if (docSnapshot.exists()) {
-          const userData = docSnapshot.data();
-          if (userData.profilePicture) {
-            const oldImageRef = ref(storage, userData.profilePicture);
-            await deleteObject(oldImageRef).catch((error) => {
-              toast.error(error);
-            });
-          }
-        }
         const storageRef = ref(storage, `${user.uid}/${file.name}`);
         await uploadBytes(storageRef, file);
         const url = await getDownloadURL(storageRef);
         setDownloadURL(url);
 
         await setDoc(docRef, { profilePicture: url }, { merge: true });
+        toast.success("Profile picture uploaded successfully!");
       } else {
         toast.error("Please login first!");
       }
+    } else {
+      toast.error("No file selected!");
     }
   };
 
@@ -257,7 +251,7 @@ const Profile = () => {
                     </div>
                     <div className="mt-4 inline-flex gap-2">
                       <input
-                        className="block w-full text-sm h-7 text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                        className="block w-full text-sm h-10 text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
                         aria-describedby="file_input_help"
                         id="file_input"
                         type="file"
@@ -265,7 +259,10 @@ const Profile = () => {
                       />
 
                       <button className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-3 py-1 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                        <FaFileUpload onClick={handleUpload} />
+                        <FaFileUpload
+                          onClick={handleUpload}
+                          className="scale-125"
+                        />
                       </button>
                     </div>
                     <p
