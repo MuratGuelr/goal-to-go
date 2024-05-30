@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { auth, db } from "../firebase/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 
-const AvatarProfile = ({ url, bigClass }) => {
+const AvatarProfile = ({ bigClass }) => {
   const defaultImage = "/default-avatar.svg";
   const [userDetails, setUserDetails] = useState("");
 
@@ -13,7 +13,6 @@ const AvatarProfile = ({ url, bigClass }) => {
         const unsubscribeSnapshot = onSnapshot(docRef, (doc) => {
           if (doc.exists()) {
             setUserDetails(doc.data());
-          } else {
           }
         });
 
@@ -34,9 +33,13 @@ const AvatarProfile = ({ url, bigClass }) => {
         className={
           bigClass
             ? "w-38 h-38 rounded ml-3 border-2 border-blue-900 bg-white"
-            : "w-12 h-12 rounded-full cursor-pointer ml-3 border-2 border-blue-900 bg-white hover:border-white transition-all scale-110"
+            : "w-12 h-12 rounded-full cursor-pointer ml-3 border-2 border-blue-900 bg-white hover:border-white transition-all object-cover scale-125"
         }
-        src={userDetails.profilePicture}
+        src={
+          !userDetails.profilePicture
+            ? defaultImage
+            : userDetails.profilePicture
+        }
       />
     </div>
   );
