@@ -91,13 +91,13 @@ const ListImages = () => {
   };
 
   return (
-    <div className="flex gap-5 flex-wrap">
+    <div className="flex gap-3 flex-wrap justify-center ml-5">
       {userDetails ? (
         <>
           {images.map((url, index) => (
-            <div key={index} className="relative">
+            <div key={index} className="relative ">
               <img
-                className="h-16 cursor-pointer hover:ring"
+                className="h-20 cursor-pointer hover:ring"
                 src={url}
                 alt={`User ${index + 1} image`}
                 onClick={() => handleClick(url)}
