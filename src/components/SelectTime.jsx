@@ -1,15 +1,30 @@
-import React from "react";
+import React, { useState } from "react";
 
-const SelectTime = ({ setSeconds }) => {
+const SelectTime = ({ setSeconds, maxed }) => {
+  const [isActive, setIsActive] = useState(false);
+  const [isActive2, setIsActive2] = useState(false);
+  const [isActive3, setIsActive3] = useState(false);
+  const [isActive4, setIsActive4] = useState(false);
+
   return (
-    <div className="flex ml-5 -mt-2 scale-75 absolute">
-      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+    <div className={maxed ? "scale-100 -mb-5 mt-3" : "scale-75"}>
+      <ul className="text-sm text-gray-700 dark:text-gray-200 flex gap-5">
         <li>
           <button
             type="button"
-            className="inline-flex w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 dark:hover:text-white"
+            className={
+              isActive
+                ? "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-200"
+                : "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-400"
+            }
             role="menuitem"
-            onClick={() => setSeconds(900)}
+            onClick={() => {
+              setSeconds(900);
+              setIsActive(true);
+              setIsActive2(false);
+              setIsActive3(false);
+              setIsActive4(false);
+            }}
           >
             15 min
           </button>
@@ -17,31 +32,61 @@ const SelectTime = ({ setSeconds }) => {
         <li>
           <button
             type="button"
-            className="inline-flex w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 dark:hover:text-white"
+            className={
+              isActive2
+                ? "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-200"
+                : "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-400"
+            }
             role="menuitem"
-            onClick={() => setSeconds(1800)}
+            onClick={() => {
+              setSeconds(1800);
+              setIsActive(false);
+              setIsActive2(true);
+              setIsActive3(false);
+              setIsActive4(false);
+            }}
           >
-            30 minutes
+            30 min
           </button>
         </li>
         <li>
           <button
             type="button"
-            className="inline-flex w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 dark:hover:text-white"
+            className={
+              isActive3
+                ? "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-200"
+                : "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-400"
+            }
             role="menuitem"
-            onClick={() => setSeconds(2700)}
+            onClick={() => {
+              setSeconds(2700);
+              setIsActive(false);
+              setIsActive2(false);
+              setIsActive3(true);
+              setIsActive4(false);
+            }}
           >
-            45 minutes
+            45 min
           </button>
         </li>
         <li>
           <button
             type="button"
-            className="inline-flex w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 dark:hover:text-white"
+            className={
+              isActive4
+                ? "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-200"
+                : "text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white p-1 rounded-md dark:text-gray-400"
+            }
             role="menuitem"
-            onClick={() => setSeconds(3600)}
+            onClick={() => {
+              setSeconds(3600);
+              setIsActive(false);
+              setIsActive2(false);
+              setIsActive3(false);
+              setIsActive4(true);
+            }}
           >
-            1 hour
+            1 hrs
           </button>
         </li>
       </ul>
