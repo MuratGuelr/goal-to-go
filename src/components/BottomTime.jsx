@@ -1,17 +1,27 @@
-import React, { useState, useEffect } from "react";
-import { FaPlay } from "react-icons/fa";
-import { FaStop } from "react-icons/fa6";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  FaPlay,
+  FaStop,
+  FaConciergeBell,
+  FaBellSlash,
+  FaBell,
+  FaWindowMinimize,
+  FaWindowMaximize,
+  FaWindowClose,
+} from "react-icons/fa";
 import { GrPowerReset } from "react-icons/gr";
 import { TiMediaPause } from "react-icons/ti";
-import { FaConciergeBell } from "react-icons/fa";
-import { FaBellSlash } from "react-icons/fa";
 import { HiMiniBellAlert } from "react-icons/hi2";
-import { FaBell } from "react-icons/fa";
+import { auth, db } from "../firebase/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import SelectTime from "./SelectTime";
 import bellSound from "../../public/countdown-sounds/cash-register.mp3";
 import doneBell from "../../public/countdown-sounds/done-bell.mp3";
 import memeBell from "../../public/countdown-sounds/meme-bell.mp3";
-import Draggable, { DraggableCore } from "react-draggable";
+import startNotification from "../../public/notification-sound/start-notification.mp3";
+import stopNotification from "../../public/notification-sound/stop-notification.mp3";
+import Draggable from "react-draggable";
+import { toast } from "react-toastify";
 
 const BottomTime = () => {
   const [seconds, setSeconds] = useState(0);
@@ -19,6 +29,15 @@ const BottomTime = () => {
   const [isActive, setIsActive] = useState(false);
   const [isBegan, setIsBegan] = useState(false);
   const [audio, setAudio] = useState(null);
+  const [userDetails, setUserDetails] = useState("");
+  const [activeBell, setActiveBell] = useState(null);
+  const [minimized, setMinimized] = useState(false);
+  const [closeApp, setCloseApp] = useState(false);
+  const [maxed, setMaxed] = useState(false);
+  const nodeRef = useRef(null);
+
+  const startNotificationSound = new Audio(startNotification);
+  const stopNotificationSound = new Audio(stopNotification);
 
   useEffect(() => {
     let interval = null;
@@ -45,10 +64,14 @@ const BottomTime = () => {
   const handleStart = () => {
     setIsActive(true);
     setIsBegan(true);
+    toast.success("The timer has started!");
+    startNotificationSound.play();
   };
 
   const handleStop = () => {
     setIsActive(false);
+    toast.success("The timer has stopped!");
+    stopNotificationSound.play();
   };
 
   const handleReset = () => {
@@ -64,65 +87,299 @@ const BottomTime = () => {
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
-  return (
-    <Draggable>
-      <div className="fixed z-50 w-full h-36 max-w-lg -translate-x-1/2 bg-white border border-gray-200 rounded-full bottom-16 left-1/2 dark:bg-gray-700 dark:border-gray-600 cursor-grabbing">
-        <div>
-          <FaConciergeBell
-            className="absolute text-white cursor-pointer scale-150 right-24 top-8"
-            onClick={() => setAudio(new Audio(bellSound))}
-          />
-          <FaBellSlash
-            className="absolute text-white cursor-pointer scale-150 right-10 top-8"
-            onClick={() => setAudio(null)}
-          />
-          <HiMiniBellAlert
-            className="absolute text-white cursor-pointer scale-150 right-10 top-20"
-            onClick={() => setAudio(new Audio(doneBell))}
-          />
-          <FaBell
-            className="absolute text-white cursor-pointer scale-150 right-24 top-20"
-            onClick={() => setAudio(new Audio(memeBell))}
-          />
-        </div>
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const docRef = doc(db, "Users", user.uid);
+        const unsubscribeSnapshot = onSnapshot(docRef, (doc) => {
+          if (doc.exists()) {
+            setUserDetails(doc.data());
+          }
+        });
 
-        <SelectTime setSeconds={setSeconds} setInputTime={setInputTime} />
-        <div className="h-full max-w-lg items-center justify-center">
-          <div>
-            <div className="col-span-1 mx-2 text-center text-8xl dark:text-white mt-1 mb-1 ml-5">
-              {formatTime(seconds)}
+        return () => unsubscribeSnapshot();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <Draggable nodeRef={nodeRef}>
+      {closeApp ? (
+        <div
+          ref={nodeRef}
+          className={
+            minimized
+              ? `fixed z-50 w-10 bg-gray-700 border border-gray-200 rounded-full shadow-lg  cursor-grabbing h-2 bottom-10 left-8`
+              : `fixed z-50 w-10 bg-gray-700 border border-gray-200 rounded-full shadow-lg  cursor-grabbing top-3/4 left-8 ${
+                  maxed ? "w-1/3 h-1/3" : ""
+                }`
+          }
+        >
+          <div className="bg-blue-800 text-white p-2 flex justify-between items-center rounded-full">
+            <div className="flex space-x-2">
+              <button
+                className="w-6 h-6 flex justify-center items-center bg-red-500 rounded-full"
+                onClick={() => {
+                  setCloseApp(false);
+                  setMinimized(false);
+                }}
+              >
+                <FaWindowClose size={10} />
+              </button>
             </div>
           </div>
+          <div
+            className={`flex-1 p-4 flex flex-col items-center justify-center ${
+              minimized ? "invisible" : ""
+            } ${maxed ? "scale-125 mt-12" : ""}`}
+          >
+            <SelectTime
+              setSeconds={setSeconds}
+              setInputTime={setInputTime}
+              maxed={maxed}
+            />
+            <div
+              className={`text-8xl text-center text-gray-800 dark:text-white mt-2 mb-4 ${
+                maxed ? "text-8xl font-extrabold mt-8 mb-5" : ""
+              }`}
+            >
+              {formatTime(seconds)}
+            </div>
 
-          <div className="flex gap-3 items-center justify-center mt-1 ml-5">
-            <button
-              className="w-6 h-6 px-1 rounded-md bg-green-500 text-white dark:bg-green-700"
-              onClick={handleStart}
-              disabled={!seconds}
+            <div className="flex gap-3">
+              <button
+                className={`w-8 h-8 flex justify-center items-center bg-green-500 text-white rounded-full ${
+                  maxed ? " w-20 h-20 mt-2" : ""
+                }`}
+                onClick={handleStart}
+                disabled={!seconds}
+              >
+                {isActive || !isBegan ? (
+                  <FaPlay />
+                ) : (
+                  <TiMediaPause className="scale-150" />
+                )}
+              </button>
+              <button
+                className={`w-8 h-8 flex justify-center items-center bg-red-500 text-white rounded-md ${
+                  maxed ? " w-20 h-20 mt-2" : ""
+                }`}
+                onClick={handleStop}
+                disabled={!isActive}
+              >
+                <FaStop />
+              </button>
+              <button
+                className={`w-8 h-8 flex justify-center items-center bg-yellow-500 text-white rounded-md ${
+                  maxed ? " w-20 h-20 mt-2" : ""
+                }`}
+                onClick={handleReset}
+                disabled={isActive && seconds > 0}
+              >
+                <GrPowerReset />
+              </button>
+            </div>
+            <div
+              className={`relative flex space-x-4 mt-4 ${
+                maxed ? "mt-8 scale-125" : ""
+              }`}
             >
-              {isActive || !isBegan ? (
-                <FaPlay />
-              ) : (
-                <TiMediaPause className="scale-150" />
-              )}
-            </button>
-            <button
-              className="w-6 h-6 px-1 rounded-md bg-red-500 text-white dark:bg-red-700"
-              onClick={handleStop}
-              disabled={!isActive}
-            >
-              <FaStop />
-            </button>
-            <button
-              className="w-6 h-6 px-1 rounded-md bg-yellow-500 text-white dark:bg-yellow-700"
-              onClick={handleReset}
-              disabled={isActive && seconds > 0}
-            >
-              <GrPowerReset />
-            </button>
+              <FaConciergeBell
+                className={
+                  activeBell === bellSound
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(bellSound);
+                  setAudio(new Audio(bellSound));
+                }}
+              />
+
+              <HiMiniBellAlert
+                className={
+                  activeBell === doneBell
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(doneBell);
+                  setAudio(new Audio(doneBell));
+                }}
+              />
+              <FaBell
+                className={
+                  activeBell === memeBell
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(memeBell);
+                  setAudio(new Audio(memeBell));
+                }}
+              />
+              <FaBellSlash
+                className={
+                  activeBell === null
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(null);
+                  setAudio(null);
+                }}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div
+          ref={nodeRef}
+          className={
+            minimized
+              ? `fixed z-50 w-72 bg-gray-700 border border-gray-200 rounded-lg shadow-lg  cursor-grabbing h-11 bottom-10 left-8`
+              : `fixed z-50 w-72 bg-gray-700 border border-gray-200 rounded-lg shadow-lg  cursor-grabbing top-3/4 left-8 ${
+                  maxed ? "w-1/3 h-1/3" : ""
+                }`
+          }
+        >
+          <div className="bg-blue-800 text-white p-2 flex justify-between items-center rounded-t-lg">
+            <span className="text-sm">{userDetails.username}'s Timer App</span>
+            <div className="flex space-x-2">
+              <button className="w-4 h-4 flex justify-center items-center bg-yellow-500 rounded-full">
+                <FaWindowMinimize
+                  size={10}
+                  onClick={
+                    minimized
+                      ? () => setMinimized(false)
+                      : () => setMinimized(true)
+                  }
+                />
+              </button>
+              <button className="w-4 h-4 flex justify-center items-center bg-green-500 rounded-full">
+                <FaWindowMaximize
+                  size={10}
+                  onClick={maxed ? () => setMaxed(false) : () => setMaxed(true)}
+                />
+              </button>
+              <button
+                className="w-4 h-4 flex justify-center items-center bg-red-500 rounded-full"
+                onClick={() => {
+                  setCloseApp(true);
+                  setMinimized(true);
+                }}
+              >
+                <FaWindowClose size={10} />
+              </button>
+            </div>
+          </div>
+          <div
+            className={`flex-1 p-4 flex flex-col items-center justify-center ${
+              minimized ? "invisible" : ""
+            } ${maxed ? "scale-125 mt-12" : ""}`}
+          >
+            <SelectTime
+              setSeconds={setSeconds}
+              setInputTime={setInputTime}
+              maxed={maxed}
+            />
+            <div
+              className={`text-8xl text-center text-gray-800 dark:text-white mt-2 mb-4 ${
+                maxed ? "text-8xl font-extrabold mt-8 mb-5" : ""
+              }`}
+            >
+              {formatTime(seconds)}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                className={`w-8 h-8 flex justify-center items-center bg-green-500 text-white rounded-md ${
+                  maxed ? " w-20 h-20 mt-2" : ""
+                }`}
+                onClick={handleStart}
+                disabled={!seconds}
+              >
+                {isActive || !isBegan ? (
+                  <FaPlay />
+                ) : (
+                  <TiMediaPause className="scale-150" />
+                )}
+              </button>
+              <button
+                className={`w-8 h-8 flex justify-center items-center bg-red-500 text-white rounded-md ${
+                  maxed ? " w-20 h-20 mt-2" : ""
+                }`}
+                onClick={handleStop}
+                disabled={!isActive}
+              >
+                <FaStop />
+              </button>
+              <button
+                className={`w-8 h-8 flex justify-center items-center bg-yellow-500 text-white rounded-md ${
+                  maxed ? " w-20 h-20 mt-2" : ""
+                }`}
+                onClick={handleReset}
+                disabled={isActive && seconds > 0}
+              >
+                <GrPowerReset />
+              </button>
+            </div>
+            <div
+              className={`relative flex space-x-4 mt-4 ${
+                maxed ? "mt-8 scale-125" : ""
+              }`}
+            >
+              <FaConciergeBell
+                className={
+                  activeBell === bellSound
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(bellSound);
+                  setAudio(new Audio(bellSound));
+                }}
+              />
+
+              <HiMiniBellAlert
+                className={
+                  activeBell === doneBell
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(doneBell);
+                  setAudio(new Audio(doneBell));
+                }}
+              />
+              <FaBell
+                className={
+                  activeBell === memeBell
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(memeBell);
+                  setAudio(new Audio(memeBell));
+                }}
+              />
+              <FaBellSlash
+                className={
+                  activeBell === null
+                    ? "text-gray-300 cursor-pointer"
+                    : "text-gray-600 cursor-pointer hover:text-gray-400"
+                }
+                onClick={() => {
+                  setActiveBell(null);
+                  setAudio(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </Draggable>
   );
 };
