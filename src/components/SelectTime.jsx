@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 
-const SelectTime = ({ setSeconds, maxed }) => {
+const SelectTime = ({ setSeconds }) => {
   const [isActive, setIsActive] = useState(false);
   const [isActive2, setIsActive2] = useState(false);
   const [isActive3, setIsActive3] = useState(false);
   const [isActive4, setIsActive4] = useState(false);
 
   return (
-    <div className={maxed ? "scale-100 -mb-5 mt-3" : "scale-75"}>
+    <div className="scale-90">
       <ul className="text-sm text-gray-700 dark:text-gray-200 flex gap-5">
         <li>
           <button
