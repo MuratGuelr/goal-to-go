@@ -1,14 +1,17 @@
 import React, { useState } from "react";
-import CountdownTimer from "../components/CountdownTimer";
-import MiniCountdownTimer from "../components/MiniCountdownTimer";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
-import Stopwatch from "../components/StopWatch";
-import MiniStopWatch from "../components/MiniStopWatch";
+import Stopwatch from "../components/Stopwatches/StopWatch";
+import MiniStopWatch from "../components/Stopwatches/MiniStopWatch";
+import CountdownTimer from "../components/Countdowns/CountdownTimer";
+import MiniCountdownTimer from "../components/Countdowns/MiniCountdownTimer";
+import InfiniteCanvas from "../components/Canvas/InfiniteCanvas";
+import MiniInfiniteCanvas from "../components/Canvas/MiniInfiniteCanvas";
 
 const CreateGoal = () => {
   const [countdownTimers, setCountdownTimers] = useState([]);
   const [stopWatchTimers, setStopWatchTimers] = useState([]);
+  const [infiniteCanvas, setInfiniteCanvas] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleAddCountdownTimer = () => {
@@ -27,12 +30,24 @@ const CreateGoal = () => {
     }
   };
 
+  const handleAddInfiniteCanvas = () => {
+    if (infiniteCanvas.length > 9) {
+      toast.error("You can't add more than 10!");
+    } else {
+      setInfiniteCanvas([...infiniteCanvas, { id: Date.now() }]);
+    }
+  };
+
   const handleRemoveCountdownTimer = (id) => {
     setCountdownTimers(countdownTimers.filter((timer) => timer.id !== id));
   };
 
   const handleRemoveStopWatchTimer = (id) => {
     setStopWatchTimers(stopWatchTimers.filter((timer) => timer.id !== id));
+  };
+
+  const handleRemoveInfiniteCanvas = (id) => {
+    setInfiniteCanvas(infiniteCanvas.filter((timer) => timer.id !== id));
   };
 
   const handleModalToggle = () => {
@@ -59,14 +74,19 @@ const CreateGoal = () => {
         </React.Fragment>
       ))}
 
+      {infiniteCanvas.map((timer, index) => (
+        <React.Fragment key={timer.id}>
+          <InfiniteCanvas
+            tabTotal={index}
+            onRemove={() => handleRemoveInfiniteCanvas(timer.id)}
+            timerID={timer.id}
+          />
+        </React.Fragment>
+      ))}
+
       <div className="top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 fixed bg-gray-700 cursor-pointer w-1/3 h-1/3 rounded-full flex">
         <div className="m-auto">
-          <button
-            data-modal-target="popup-modal"
-            data-modal-toggle="popup-modal"
-            type="button"
-            onClick={handleModalToggle}
-          >
+          <button type="button" onClick={handleModalToggle}>
             <img
               src="/logo-w.png"
               className="w-72 h-72 rounded-full bg-gray-500 p-8"
@@ -78,7 +98,6 @@ const CreateGoal = () => {
       <AnimatePresence>
         {isModalOpen && (
           <motion.div
-            id="popup-modal"
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
@@ -120,6 +139,12 @@ const CreateGoal = () => {
                     </div>
                     <div
                       onClick={handleAddStopWatchTimer}
+                      className="transition transform hover:scale-110"
+                    >
+                      <MiniStopWatch />
+                    </div>
+                    <div
+                      onClick={handleAddInfiniteCanvas}
                       className="transition transform hover:scale-110"
                     >
                       <MiniStopWatch />

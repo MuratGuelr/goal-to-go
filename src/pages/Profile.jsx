@@ -8,7 +8,6 @@ import {
   onSnapshot,
   updateDoc,
   setDoc,
-  getDoc,
 } from "firebase/firestore";
 import { toast } from "react-toastify";
 import Loading from "../components/Loading";
