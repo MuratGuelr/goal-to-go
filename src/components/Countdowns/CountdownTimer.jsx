@@ -23,8 +23,22 @@ import "react-resizable/css/styles.css";
 import { RxOpacity } from "react-icons/rx";
 import { MdOpacity } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+} from "firebase/firestore";
+import { auth, db } from "../../firebase/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
-const CountdownTimer = ({ onRemove, tabTotal }) => {
+const CountdownTimer = ({
+  onRemove,
+  tabTotal,
+  positionCountdown,
+  setPositionCountdown,
+}) => {
   const [seconds, setSeconds] = useState(0);
   const [inputTime, setInputTime] = useState("");
   const [isActive, setIsActive] = useState(false);
@@ -32,12 +46,25 @@ const CountdownTimer = ({ onRemove, tabTotal }) => {
   const [audio, setAudio] = useState(null);
   const [activeBell, setActiveBell] = useState(null);
   const [minimized, setMinimized] = useState(false);
+  const [user, setUser] = useState(null);
   const [changeOpacity, setChangeOpacity] = useState(false);
 
   const nodeRef = useRef(null);
 
   const startNotificationSound = new Audio(startNotification);
   const stopNotificationSound = new Audio(stopNotification);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     let interval = null;
@@ -56,6 +83,31 @@ const CountdownTimer = ({ onRemove, tabTotal }) => {
     }
     return () => clearInterval(interval);
   }, [isActive, seconds]);
+
+  useEffect(() => {
+    if (user) {
+      updatePositionCountdownInFirestore(user.uid, positionCountdown);
+    }
+  }, [positionCountdown, user]);
+
+  const updatePositionCountdownInFirestore = async (uid, newPosition) => {
+    const userToolsRef = collection(db, "tools");
+    const q = query(
+      userToolsRef,
+      where("uid", "==", uid),
+      where("type", "==", "countdown")
+    );
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach(async (doc) => {
+      if (doc.exists()) {
+        await updateDoc(doc.ref, {
+          positionCountdown: newPosition,
+        });
+      } else {
+        console.error("Belge bulunamadı!");
+      }
+    });
+  };
 
   const playSound = () => {
     audio.play();
@@ -87,6 +139,10 @@ const CountdownTimer = ({ onRemove, tabTotal }) => {
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
+  const getPosition = (e, data) => {
+    setPositionCountdown({ x: data.x, y: data.y });
+  };
+
   return (
     <motion.div
       ref={nodeRef}
@@ -97,7 +153,13 @@ const CountdownTimer = ({ onRemove, tabTotal }) => {
       animate={{ opacity: 1, y: 0, x: 20 }}
       exit={{ opacity: 0, y: 0, x: 20 }}
     >
-      <Draggable nodeRef={nodeRef} bounds="parent" handle=".handle">
+      <Draggable
+        nodeRef={nodeRef}
+        bounds="parent"
+        handle=".handle"
+        position={positionCountdown}
+        onStop={getPosition}
+      >
         <div
           ref={nodeRef}
           className={`fixed z-90 border border-gray-500 shadow-lg bg-gray-700 rounded-tr-lg rounded-bl-lg flex ${

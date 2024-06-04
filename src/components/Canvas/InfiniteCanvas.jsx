@@ -12,7 +12,13 @@ import { RxOpacity } from "react-icons/rx";
 import { MdOpacity } from "react-icons/md";
 import { FaRegWindowMinimize } from "react-icons/fa";
 
-const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
+const InfiniteCanvas = ({
+  onRemove,
+  tabTotal,
+  timerID,
+  position,
+  setPosition,
+}) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [user, setUser] = useState(null);
@@ -26,7 +32,7 @@ const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
   const [canvasHeight, setCanvasHeight] = useState(460);
   const nodeRef = useRef(null);
 
-  const handleResize = (e, { size }) => {
+  const handleResize = ({ size }) => {
     const { width, height } = size;
     setCanvasWidth(width);
     setCanvasHeight(height);
@@ -53,6 +59,7 @@ const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
         const data = doc.data();
         if (data) {
           setNotes(data.notes || []);
+          setPosition(data.position || { x: 0, y: 0 });
           drawSavedNotes(data.notes || []);
         }
       });
@@ -60,12 +67,13 @@ const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
     }
   }, [user]);
 
-  const fetchNotes = async () => {
+  const fetchNotes = async (user) => {
     const docRef = doc(db, user.uid, timerID.toString());
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
       setNotes(data.notes || []);
+      setPosition(data.position || { x: 0, y: 0 });
       drawSavedNotes(data.notes || []);
     }
   };
@@ -132,6 +140,7 @@ const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
     const lastNote = notes[notes.length - 1];
     const newNotes = [...notes];
     const currentColor = eraserMode ? "#FFFFFF" : color;
+    setPosition({ x: offsetX, y: offsetY });
     newNotes[newNotes.length - 1] = {
       points: [
         ...lastNote.points,
@@ -155,7 +164,7 @@ const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
     setIsDrawing(false);
     if (user) {
       const docRef = doc(db, user.uid, timerID.toString());
-      setDoc(docRef, { notes }, { merge: true })
+      setDoc(docRef, { notes, position }, { merge: true })
         .then(() => {})
         .catch((error) => {
           toast.error(error);
@@ -187,11 +196,22 @@ const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
       try {
         await deleteDoc(docRef);
         await deleteDoc(prefDocRef);
-        toast.success("Canvas and preferences successfully deleted.");
         onRemove();
       } catch (error) {
         toast.error(error.message);
       }
+    }
+  };
+
+  const handleStop = (e, data) => {
+    setPosition({ x: data.x, y: data.y });
+    if (user) {
+      const docRef = doc(db, user.uid, timerID.toString());
+      setDoc(docRef, { position: { x: data.x, y: data.y } }, { merge: true })
+        .then(() => {})
+        .catch((error) => {
+          toast.error(error);
+        });
     }
   };
 
@@ -205,7 +225,13 @@ const InfiniteCanvas = ({ onRemove, tabTotal, timerID }) => {
       animate={{ opacity: 1, y: 0, x: 20 }}
       exit={{ opacity: 0, y: 0, x: 20 }}
     >
-      <Draggable nodeRef={nodeRef} bounds="parent" handle=".handle">
+      <Draggable
+        nodeRef={nodeRef}
+        bounds="parent"
+        handle=".handle"
+        position={position}
+        onStop={handleStop}
+      >
         <div
           ref={nodeRef}
           className={`fixed z-90 border border-gray-500 shadow-lg bg-gray-700 rounded-tr-lg rounded-bl-lg flex ${

@@ -1,52 +1,125 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import Stopwatch from "../components/Stopwatches/StopWatch";
-import MiniStopWatch from "../components/Stopwatches/MiniStopWatch";
 import CountdownTimer from "../components/Countdowns/CountdownTimer";
-import MiniCountdownTimer from "../components/Countdowns/MiniCountdownTimer";
 import InfiniteCanvas from "../components/Canvas/InfiniteCanvas";
-import MiniInfiniteCanvas from "../components/Canvas/MiniInfiniteCanvas";
+import MiniTools from "../components/MiniTools/MiniTools";
+import { auth, db } from "../firebase/firebase";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 const CreateGoal = () => {
   const [countdownTimers, setCountdownTimers] = useState([]);
   const [stopWatchTimers, setStopWatchTimers] = useState([]);
   const [infiniteCanvas, setInfiniteCanvas] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [positionCountdown, setPositionCountdown] = useState({ x: 0, y: 0 });
+  const [positionStopWatch, setPositionStopWatch] = useState({ x: 0, y: 0 });
+  const [user, setUser] = useState(null);
 
-  const handleAddCountdownTimer = () => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user);
+        fetchUserData(user.uid);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchUserData = async (uid) => {
+    const userToolsRef = collection(db, "tools");
+    const q = query(
+      userToolsRef,
+      where("uid", "==", uid),
+      where("removedAt", "==", null)
+    );
+    const querySnapshot = await getDocs(q);
+    const data = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    const countdowns = data.filter((tool) => tool.type === "countdown");
+    const stopwatches = data.filter((tool) => tool.type === "stopwatch");
+    const canvases = data.filter((tool) => tool.type === "canvas");
+    setCountdownTimers(countdowns);
+    setStopWatchTimers(stopwatches);
+    setInfiniteCanvas(canvases);
+  };
+
+  const handleAddCountdownTimer = async () => {
     if (countdownTimers.length > 9) {
       toast.error("You can't add more than 10!");
     } else {
-      setCountdownTimers([...countdownTimers, { id: Date.now() }]);
+      const newTimer = {
+        type: "countdown",
+        createdAt: Date.now(),
+        uid: user.uid,
+        removedAt: null,
+        positionCountdown,
+      };
+      const docRef = await addDoc(collection(db, "tools"), newTimer);
+      setCountdownTimers([...countdownTimers, { id: docRef.id, ...newTimer }]);
     }
   };
 
-  const handleAddStopWatchTimer = () => {
+  const handleAddStopWatchTimer = async () => {
     if (stopWatchTimers.length > 9) {
       toast.error("You can't add more than 10!");
     } else {
-      setStopWatchTimers([...stopWatchTimers, { id: Date.now() }]);
+      const newTimer = {
+        type: "stopwatch",
+        createdAt: Date.now(),
+        uid: user.uid,
+        removedAt: null,
+        positionStopWatch,
+      };
+      const docRef = await addDoc(collection(db, "tools"), newTimer);
+      setStopWatchTimers([...stopWatchTimers, { id: docRef.id, ...newTimer }]);
     }
   };
 
-  const handleAddInfiniteCanvas = () => {
+  const handleAddInfiniteCanvas = async () => {
     if (infiniteCanvas.length > 9) {
       toast.error("You can't add more than 10!");
     } else {
-      setInfiniteCanvas([...infiniteCanvas, { id: Date.now() }]);
+      const newCanvas = {
+        type: "canvas",
+        createdAt: Date.now(),
+        uid: user.uid,
+        removedAt: null,
+        position,
+      };
+      const docRef = await addDoc(collection(db, "tools"), newCanvas);
+      setInfiniteCanvas([...infiniteCanvas, { id: docRef.id, ...newCanvas }]);
     }
   };
 
-  const handleRemoveCountdownTimer = (id) => {
+  const handleRemoveCountdownTimer = async (id) => {
+    await deleteDoc(doc(db, "tools", id));
     setCountdownTimers(countdownTimers.filter((timer) => timer.id !== id));
   };
 
-  const handleRemoveStopWatchTimer = (id) => {
+  const handleRemoveStopWatchTimer = async (id) => {
+    await deleteDoc(doc(db, "tools", id));
     setStopWatchTimers(stopWatchTimers.filter((timer) => timer.id !== id));
   };
 
-  const handleRemoveInfiniteCanvas = (id) => {
+  const handleRemoveInfiniteCanvas = async (id) => {
+    await deleteDoc(doc(db, "tools", id));
     setInfiniteCanvas(infiniteCanvas.filter((timer) => timer.id !== id));
   };
 
@@ -61,6 +134,8 @@ const CreateGoal = () => {
           <CountdownTimer
             tabTotal={index}
             onRemove={() => handleRemoveCountdownTimer(timer.id)}
+            positionCountdown={positionCountdown}
+            setPositionCountdown={setPositionCountdown}
           />
         </React.Fragment>
       ))}
@@ -70,6 +145,8 @@ const CreateGoal = () => {
           <Stopwatch
             tabTotal={index}
             onRemove={() => handleRemoveStopWatchTimer(timer.id)}
+            positionStopWatch={positionStopWatch}
+            setPositionStopWatch={setPositionStopWatch}
           />
         </React.Fragment>
       ))}
@@ -80,6 +157,8 @@ const CreateGoal = () => {
             tabTotal={index}
             onRemove={() => handleRemoveInfiniteCanvas(timer.id)}
             timerID={timer.id}
+            position={position}
+            setPosition={setPosition}
           />
         </React.Fragment>
       ))}
@@ -106,7 +185,7 @@ const CreateGoal = () => {
             tabIndex="-1"
           >
             <div className="text-center">
-              <div className="top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 absolute bg-gray-800 cursor-pointer p-5 rounded-lg flex w-2/4">
+              <div className="top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 absolute bg-gray-800 cursor-pointer rounded-lg flex p-12">
                 <div className="relative w-full">
                   <button
                     className="absolute top-0 right-0 m-4 text-gray-400 hover:text-gray-100"
@@ -127,27 +206,27 @@ const CreateGoal = () => {
                       />
                     </svg>
                   </button>
-                  <span className="text-7xl font-semibold text-transparent bg-clip-text bg-gradient-to-r to-emerald-600 from-sky-400">
+                  <span className="text-6xl font-semibold text-transparent bg-clip-text bg-gradient-to-r to-emerald-600 from-sky-400">
                     Tools
                   </span>
-                  <div className="flex flex-wrap justify-center align-middle mt-4 ">
+                  <div className="flex flex-wrap justify-center gap-5 mt-5">
                     <div
                       onClick={handleAddCountdownTimer}
                       className="transition transform hover:scale-110"
                     >
-                      <MiniCountdownTimer />
+                      <MiniTools URL={"/tools/countdown-timer.jpg"} />
                     </div>
                     <div
                       onClick={handleAddStopWatchTimer}
                       className="transition transform hover:scale-110"
                     >
-                      <MiniStopWatch />
+                      <MiniTools URL={"/tools/stopwatch.jpg"} />
                     </div>
                     <div
                       onClick={handleAddInfiniteCanvas}
                       className="transition transform hover:scale-110"
                     >
-                      <MiniStopWatch />
+                      <MiniTools URL={"/tools/white-board.jpg"} />
                     </div>
                   </div>
                 </div>
