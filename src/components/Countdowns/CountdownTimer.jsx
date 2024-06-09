@@ -29,6 +29,7 @@ import {
   query,
   where,
   updateDoc,
+  addDoc,
 } from "firebase/firestore";
 import { auth, db } from "../../firebase/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -48,6 +49,7 @@ const CountdownTimer = ({
   const [minimized, setMinimized] = useState(false);
   const [user, setUser] = useState(null);
   const [changeOpacity, setChangeOpacity] = useState(false);
+  const [docId, setDocId] = useState(null);
 
   const nodeRef = useRef(null);
 
@@ -58,6 +60,7 @@ const CountdownTimer = ({
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUser(user);
+        fetchUserTools(user.uid);
       } else {
         setUser(null);
       }
@@ -85,10 +88,25 @@ const CountdownTimer = ({
   }, [isActive, seconds]);
 
   useEffect(() => {
-    if (user) {
+    if (user && docId) {
       updatePositionCountdownInFirestore(user.uid, positionCountdown);
     }
-  }, [positionCountdown, user]);
+  }, [positionCountdown, user, docId]);
+
+  const fetchUserTools = async (uid) => {
+    const userToolsRef = collection(db, "tools");
+    const q = query(
+      userToolsRef,
+      where("uid", "==", uid),
+      where("type", "==", "countdown")
+    );
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      setPositionCountdown(data.positionCountdown);
+      setDocId(doc.id);
+    });
+  };
 
   const updatePositionCountdownInFirestore = async (uid, newPosition) => {
     const userToolsRef = collection(db, "tools");
@@ -98,15 +116,18 @@ const CountdownTimer = ({
       where("type", "==", "countdown")
     );
     const querySnapshot = await getDocs(q);
-    querySnapshot.forEach(async (doc) => {
-      if (doc.exists()) {
-        await updateDoc(doc.ref, {
-          positionCountdown: newPosition,
-        });
-      } else {
-        console.error("Belge bulunamadı!");
-      }
-    });
+    if (!querySnapshot.empty) {
+      const docRef = querySnapshot.docs[0].ref;
+      await updateDoc(docRef, { positionCountdown: newPosition });
+    } else {
+      const newDocRef = await addDoc(collection(db, "tools"), {
+        uid,
+        type: "countdown",
+        positionCountdown: newPosition,
+        createdAt: Date.now(),
+      });
+      setDocId(newDocRef.id);
+    }
   };
 
   const playSound = () => {
@@ -161,7 +182,6 @@ const CountdownTimer = ({
         onStop={getPosition}
       >
         <div
-          ref={nodeRef}
           className={`fixed z-90 border border-gray-500 shadow-lg bg-gray-700 rounded-tr-lg rounded-bl-lg flex ${
             changeOpacity ? "bg-opacity-50" : "bg-opacity-100"
           }`}
