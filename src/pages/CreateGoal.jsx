@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
-import Stopwatch from "../components/Stopwatches/StopWatch";
 import CountdownTimer from "../components/Countdowns/CountdownTimer";
 import InfiniteCanvas from "../components/Canvas/InfiniteCanvas";
 import MiniTools from "../components/MiniTools/MiniTools";
@@ -19,12 +18,10 @@ import { onAuthStateChanged } from "firebase/auth";
 
 const CreateGoal = () => {
   const [countdownTimers, setCountdownTimers] = useState([]);
-  const [stopWatchTimers, setStopWatchTimers] = useState([]);
   const [infiniteCanvas, setInfiniteCanvas] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [positionCountdown, setPositionCountdown] = useState({ x: 0, y: 0 });
-  const [positionStopWatch, setPositionStopWatch] = useState({ x: 0, y: 0 });
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -53,10 +50,8 @@ const CreateGoal = () => {
       ...doc.data(),
     }));
     const countdowns = data.filter((tool) => tool.type === "countdown");
-    const stopwatches = data.filter((tool) => tool.type === "stopwatch");
     const canvases = data.filter((tool) => tool.type === "canvas");
     setCountdownTimers(countdowns);
-    setStopWatchTimers(stopwatches);
     setInfiniteCanvas(canvases);
   };
 
@@ -73,22 +68,6 @@ const CreateGoal = () => {
       };
       const docRef = await addDoc(collection(db, "tools"), newTimer);
       setCountdownTimers([...countdownTimers, { id: docRef.id, ...newTimer }]);
-    }
-  };
-
-  const handleAddStopWatchTimer = async () => {
-    if (stopWatchTimers.length > 9) {
-      toast.error("You can't add more than 10!");
-    } else {
-      const newTimer = {
-        type: "stopwatch",
-        createdAt: Date.now(),
-        uid: user.uid,
-        removedAt: null,
-        positionStopWatch,
-      };
-      const docRef = await addDoc(collection(db, "tools"), newTimer);
-      setStopWatchTimers([...stopWatchTimers, { id: docRef.id, ...newTimer }]);
     }
   };
 
@@ -113,11 +92,6 @@ const CreateGoal = () => {
     setCountdownTimers(countdownTimers.filter((timer) => timer.id !== id));
   };
 
-  const handleRemoveStopWatchTimer = async (id) => {
-    await deleteDoc(doc(db, "tools", id));
-    setStopWatchTimers(stopWatchTimers.filter((timer) => timer.id !== id));
-  };
-
   const handleRemoveInfiniteCanvas = async (id) => {
     await deleteDoc(doc(db, "tools", id));
     setInfiniteCanvas(infiniteCanvas.filter((timer) => timer.id !== id));
@@ -136,17 +110,6 @@ const CreateGoal = () => {
             onRemove={() => handleRemoveCountdownTimer(timer.id)}
             positionCountdown={positionCountdown}
             setPositionCountdown={setPositionCountdown}
-          />
-        </React.Fragment>
-      ))}
-
-      {stopWatchTimers.map((timer, index) => (
-        <React.Fragment key={timer.id}>
-          <Stopwatch
-            tabTotal={index}
-            onRemove={() => handleRemoveStopWatchTimer(timer.id)}
-            positionStopWatch={positionStopWatch}
-            setPositionStopWatch={setPositionStopWatch}
           />
         </React.Fragment>
       ))}
@@ -215,12 +178,6 @@ const CreateGoal = () => {
                       className="transition transform hover:scale-110"
                     >
                       <MiniTools URL={"/tools/countdown-timer.jpg"} />
-                    </div>
-                    <div
-                      onClick={handleAddStopWatchTimer}
-                      className="transition transform hover:scale-110"
-                    >
-                      <MiniTools URL={"/tools/stopwatch.jpg"} />
                     </div>
                     <div
                       onClick={handleAddInfiniteCanvas}
